@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pembayaran Kopi - VA</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Helvetica Neue', sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    .container {
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .order-summary {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 16px;
+    }
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+    }
+    .bank-option {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      transform: scale(1);
+      position: relative;
+    }
+    .bank-option:hover, .bank-option.selected {
+      border-color: #0096f2;
+      background-color: #f0faff;
+      transform: scale(1.02);
+    }
+    .bank-option input {
+      display: none;
+    }
+    .bank-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .checkmark {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #0096f2;
+      font-size: 20px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .bank-option.selected .checkmark {
+      opacity: 1;
+    }
+    .pay-button {
+      width: 100%;
+      padding: 14px;
+      background-color: #0096f2;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 16px;
+      font-size: 16px;
+    }
+
+    /* Tiket VA */
+    .va-ticket {
+      margin-top: 24px;
+      padding: 20px;
+      background-color: #fefefe;
+      border: 2px dashed #0096f2;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      text-align: center;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.4s ease;
+      display: none;
+    }
+    .va-ticket.show {
+      display: block;
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .va-ticket h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #0096f2;
+    }
+    .va-number {
+      font-size: 22px;
+      font-weight: bold;
+      margin-top: 8px;
+      letter-spacing: 1.5px;
+      color: #333;
+    }
+    .countdown {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Metode Pembayaran</h2>
+
+    <div class="order-summary">
+      <div class="order-item">
+        <span>Cappuccino</span>
+        <span>Rp 25.000</span>
+      </div>
+      <div class="order-item">
+        <strong>Total</strong>
+        <strong>Rp 25.000</strong>
+      </div>
+    </div>
+
+    <form id="paymentForm">
+      <label>Pilih Bank:</label>
+
+      <label class="bank-option">
+        <div class="bank-logo">
+          <img src="/images/logobca.png" alt="BCA" width="40">
+          <span>BCA Virtual Account</span>
+        </div>
+        <input type="radio" name="bank" value="BCA" />
+        <span class="checkmark">✔️</span>
+      </label>
+
+      <label class="bank-option">
+        <div class="bank-logo">
+          <img src="/images/logomandiri.png" alt="Mandiri" width="40">
+          <span>Mandiri Virtual Account</span>
+        </div>
+        <input type="radio" name="bank" value="Mandiri" />
+        <span class="checkmark">✔️</span>
+      </label>
+
+      <label class="bank-option">
+        <div class="bank-logo">
+          <img src="/images/brilogo.png" alt="BRI" width="40">
+          <span>BRI Virtual Account</span>
+        </div>
+        <input type="radio" name="bank" value="BRI" />
+        <span class="checkmark">✔️</span>
+      </label>
+
+      <button type="submit" class="pay-button">Lanjutkan Pembayaran</button>
+    </form>
+
+    <!-- Tiket VA -->
+    <div id="vaTicket" class="va-ticket">
+      <h3 id="vaBankName"></h3>
+      <p>Nomor Virtual Account:</p>
+      <div class="va-number" id="vaNumber">-</div>
+      <div class="countdown">Sisa waktu pembayaran: <span id="timer">15:00</span></div>
+    </div>
+
+    <!-- Tombol Lunas -->
+    <button id="markPaid" class="pay-button" style="margin-top: 16px; display: none;">Tandai Lunas</button>
+  </div>
+
+  <script>
+    const options = document.querySelectorAll('.bank-option');
+    options.forEach(option => {
+      option.addEventListener('click', () => {
+        options.forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        option.querySelector('input').checked = true;
+      });
+    });
+
+    let countdownInterval;
+
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const selectedBank = document.querySelector('input[name="bank"]:checked');
+      if (!selectedBank) {
+        alert("Silakan pilih metode pembayaran.");
+      } else {
+        const bank = selectedBank.value;
+        const vaNumber = generateVANumber(bank);
+
+        document.getElementById("vaBankName").innerText = `${bank} Virtual Account`;
+        document.getElementById("vaNumber").innerText = vaNumber;
+        document.getElementById("vaTicket").classList.add("show");
+
+        clearInterval(countdownInterval);
+        startCountdown(15 * 60);
+
+        const markPaidBtn = document.getElementById("markPaid");
+        markPaidBtn.style.display = "block";
+        markPaidBtn.disabled = false;
+        markPaidBtn.innerText = "Tandai Lunas";
+      }
+    });
+
+    function generateVANumber(bank) {
+      const prefixMap = {
+        BCA: "3901",
+        Mandiri: "8877",
+        BRI: "0021"
+      };
+      const prefix = prefixMap[bank] || "9999";
+      const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
+      return prefix + randomDigits;
+    }
+
+    function startCountdown(seconds) {
+      const timerDisplay = document.getElementById("timer");
+      countdownInterval = setInterval(() => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        timerDisplay.innerText = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        seconds--;
+
+        if (seconds < 0) {
+          clearInterval(countdownInterval);
+          timerDisplay.innerText = "Waktu habis";
+        }
+      }, 1000);
+    }
+
+    document.getElementById("markPaid").addEventListener("click", () => {
+      alert("Pembayaran telah ditandai sebagai lunas.");
+      const btn = document.getElementById("markPaid");
+      btn.disabled = true;
+      btn.innerText = "Lunas ✅";
+    });
+  </script>
+</body>
+</html>

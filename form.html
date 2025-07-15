@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Order Kopi</title>
+</head>
+<body>
+  <h1>Form Pemesanan Kopi</h1>
+  <form id="orderForm">
+    <input type="text" name="nama" placeholder="Nama Anda" required><br>
+    <input type="email" name="email" placeholder="Email Anda" required><br>
+    <select name="kopi" required>
+      <option value="">Pilih Kopi</option>
+      <option value="Espresso">Espresso</option>
+      <option value="Latte">Latte</option>
+    </select><br>
+    <input type="number" name="jumlah" placeholder="Jumlah" min="1" required><br>
+    <button type="submit">Kirim Pesanan</button>
+  </form>
+
+  <script>
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        nama: form.nama.value,
+        email: form.email.value,
+        kopi: form.kopi.value,
+        jumlah: parseInt(form.jumlah.value)
+      };
+      fetch('http://localhost:8080/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.text())
+      .then(msg => alert(msg))
+      .catch(err => alert("Gagal kirim pesanan: " + err));
+    });
+  </script>
+</body>
+</html>
